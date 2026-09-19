@@ -3,7 +3,9 @@ unit uhostgtk;
 {$mode objfpc}{$H+}
 
 { Linux GTK 2 window. Same TCalcController as macOS;
-  this unit only presents a GdkPixbuf and forwards input. }
+  this unit only presents a GdkPixbuf and forwards input.
+  FPC's gtk2 unit often omits later GTK 2 helpers, so they are cdecl
+  externals. Bindings use G_CALLBACK, not the C name GTK_SIGNAL_FUNC. }
 
 interface
 
@@ -15,6 +17,10 @@ implementation
 
 uses
   SysUtils, ctypes, gtk2, gdk2, gdk2pixbuf, glib2, ucalcmodel, ucalcapp;
+
+{ Not always in the FPC gtk2 ppu; the linker still finds them in libgtk-x11-2.0. }
+procedure gtk_widget_get_allocation(widget: PGtkWidget; allocation: Pointer); cdecl; external;
+procedure gtk_widget_set_can_focus(widget: PGtkWidget; can_focus: gboolean); cdecl; external;
 
 const
   WinW = 280;
@@ -217,12 +223,12 @@ begin
   gtk_menu_shell_append(PGtkMenuShell(Bar), Root);
 
   Item := gtk_menu_item_new_with_label('About Goody''s Calculator');
-  g_signal_connect(G_OBJECT(Item), 'activate', TG_SIGNAL_FUNC(@OnAbout), nil);
+  g_signal_connect(G_OBJECT(Item), 'activate', G_CALLBACK(@OnAbout), nil);
   gtk_menu_shell_append(PGtkMenuShell(Menu), Item);
   Item := gtk_separator_menu_item_new;
   gtk_menu_shell_append(PGtkMenuShell(Menu), Item);
   Item := gtk_menu_item_new_with_label('Quit');
-  g_signal_connect(G_OBJECT(Item), 'activate', TG_SIGNAL_FUNC(@OnQuit), nil);
+  g_signal_connect(G_OBJECT(Item), 'activate', G_CALLBACK(@OnQuit), nil);
   gtk_menu_shell_append(PGtkMenuShell(Menu), Item);
   Result := Bar;
 end;
@@ -242,8 +248,8 @@ begin
   gtk_window_set_title(PGtkWindow(MainWin), 'Goody''s Calculator');
   gtk_window_set_resizable(PGtkWindow(MainWin), False);
   gtk_window_set_default_size(PGtkWindow(MainWin), WinW, WinH);
-  g_signal_connect(G_OBJECT(MainWin), 'delete-event', TG_SIGNAL_FUNC(@OnDelete), nil);
-  g_signal_connect(G_OBJECT(MainWin), 'key-press-event', TG_SIGNAL_FUNC(@OnKey), nil);
+  g_signal_connect(G_OBJECT(MainWin), 'delete-event', G_CALLBACK(@OnDelete), nil);
+  g_signal_connect(G_OBJECT(MainWin), 'key-press-event', G_CALLBACK(@OnKey), nil);
   { Keys land on the window; the event box only sees the mouse. }
 
   Box := gtk_vbox_new(False, 0);
@@ -258,10 +264,10 @@ begin
   Mask := GDK_BUTTON_PRESS_MASK or GDK_BUTTON_RELEASE_MASK or
     GDK_POINTER_MOTION_MASK or GDK_LEAVE_NOTIFY_MASK;
   gtk_widget_add_events(EventBox, Mask);
-  g_signal_connect(G_OBJECT(EventBox), 'button-press-event', TG_SIGNAL_FUNC(@OnButtonPress), nil);
-  g_signal_connect(G_OBJECT(EventBox), 'button-release-event', TG_SIGNAL_FUNC(@OnButtonRelease), nil);
-  g_signal_connect(G_OBJECT(EventBox), 'motion-notify-event', TG_SIGNAL_FUNC(@OnMotion), nil);
-  g_signal_connect(G_OBJECT(EventBox), 'leave-notify-event', TG_SIGNAL_FUNC(@OnLeave), nil);
+  g_signal_connect(G_OBJECT(EventBox), 'button-press-event', G_CALLBACK(@OnButtonPress), nil);
+  g_signal_connect(G_OBJECT(EventBox), 'button-release-event', G_CALLBACK(@OnButtonRelease), nil);
+  g_signal_connect(G_OBJECT(EventBox), 'motion-notify-event', G_CALLBACK(@OnMotion), nil);
+  g_signal_connect(G_OBJECT(EventBox), 'leave-notify-event', G_CALLBACK(@OnLeave), nil);
 
   gtk_widget_set_can_focus(EventBox, True);
   Present; { first paint before gtk_main so the window is not blank }
